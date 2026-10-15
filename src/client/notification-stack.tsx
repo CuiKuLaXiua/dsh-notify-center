@@ -1,4 +1,4 @@
-// 右上角站内通知栈（注册于 shell.overlay）。
+// 右上角站内通知栈（由客户端 apply 用 createRoot 挂载到 document.body，不依赖槽位）。
 // 非阻塞 5s 自动消失（hover 暂停/恢复）；阻塞常驻脉冲直到处理；
 // 点击跳转会话；忽略按钮 / Delete / Esc / 右键同效；溢出折叠聚合。
 

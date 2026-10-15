@@ -88,10 +88,10 @@ try {
   throw new Error("client bundle 语法校验失败: " + (e && e.message));
 }
 for (const needle of [
-  "shell.overlay",
   "conversation.session.header.utilities",
   "settings.section",
   "dnc-stack",
+  "data-dsh-notify-center-root",
   "/dsh-notify/api/events",
 ]) {
   if (!clientSrc.includes(needle)) throw new Error("client bundle 缺少注册面: " + needle);

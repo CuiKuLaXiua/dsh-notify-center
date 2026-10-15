@@ -4,13 +4,14 @@
 //   1. 连接宿主 SSE（/dsh-notify/api/events），实时接收通知推送；
 //   2. 直接订阅 ctx.remote 的 approval/request 与 user-questions/request
 //      （桌面端 UI 同款通道），保证阻塞型通知可靠到达；
-//   3. 渲染三个标准槽位：
-//      - shell.overlay                         ：右上角通知栈
+//   3. 渲染界面：
+//      - 右上角通知栈：createRoot 直接挂载到 document.body（不依赖槽位渲染）
 //      - conversation.session.header.utilities ：铃铛 + 未读角标 + 通知中心
 //      - settings.section                      ：通知设置页
 //
 // 通知栈 / 铃铛 / 设置页全部使用 --dsw-alias-* 主题变量，随 DSH 明暗切换。
 
+import { createRoot } from "react-dom/client";
 import { ensureNotifyStyles } from "./styles";
 import { addItem, clearAll, isBlockingKind, removeBySession } from "./store";
 import { getSettings, isDndActive } from "./settings";
@@ -27,9 +28,24 @@ import { t } from "./locale";
 
 export const inject = ["slots", "remote", "uiWorkspace", "sessions"];
 
+let stackRoot: ReturnType<typeof createRoot> | null = null;
+
 export function apply(ctx: any): void {
   ensureNotifyStyles();
   initSessionServices(ctx);
+
+  // ── 挂载右上角通知栈（直接到 body，保证可见）──
+  try {
+    if (!stackRoot && typeof document !== "undefined") {
+      const host = document.createElement("div");
+      host.setAttribute("data-dsh-notify-center-root", "");
+      document.body.appendChild(host);
+      stackRoot = createRoot(host);
+      stackRoot.render(<NotificationStack />);
+    }
+  } catch {
+    /* 挂载失败不阻断其余功能 */
+  }
 
   // ── 推送 → UI 的路由 ──
   function handlePush(payload: any): void {
@@ -207,16 +223,7 @@ export function apply(ctx: any): void {
   ctx.effect(() => connectSSE(), "notify-center: sse");
 
   // ── 槽位注册 ──
-  ctx.effect(
-    () =>
-      ctx.slots.inject("shell.overlay", () =>
-        ctx.slots.register(
-          { name: "shell.overlay", id: "notify-center.stack", order: 1000, label: t("bell.title") },
-          () => <NotificationStack />,
-        ),
-      ),
-    "notify-center: stack",
-  );
+  // 通知栈不走槽位：apply 已用 createRoot 挂载到 document.body（见上）。
 
   ctx.effect(
     () =>

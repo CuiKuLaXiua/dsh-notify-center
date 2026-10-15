@@ -17,7 +17,7 @@ if (!clientSrc.startsWith('window.__ModuleLoader__.load({ id: "dsh-notify-center
   throw new Error("client bundle 头部不是 ModuleLoader 闭包工厂");
 }
 new Function(clientSrc);
-for (const needle of ["shell.overlay", "settings.section", "dnc-stack"]) {
+for (const needle of ["data-dsh-notify-center-root", "settings.section", "dnc-stack"]) {
   if (!clientSrc.includes(needle)) throw new Error("client bundle 缺少 " + needle);
 }
 console.log("  client lib/client.js OK (ModuleLoader + slots)");

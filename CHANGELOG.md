@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 (2026-10)
+
+- 修复：通知卡片不渲染。改用 `createRoot` 将右上角通知栈直接挂载到 `document.body`，
+  不再依赖 `shell.overlay` 槽位渲染（该槽位在部分版本/视图下不可靠）。
+- 构建自检同步更新（不再要求 `shell.overlay`）。
+
 ## 0.1.2 (2026-10)
 
 - 修复：点击通知卡片跳转会话（把 `uiWorkspace`/`sessions` 加入客户端 inject，直接调用 `ctx.uiWorkspace.openSession`）。
