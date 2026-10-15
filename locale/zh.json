@@ -1,0 +1,5 @@
+{
+  "name": "通知中心",
+  "description": "DeepSeek Harness 通知中心：页面右上角站内通知、桌面右下角原生提醒、提示音与任务栏闪烁。",
+  "settings.nav": "通知"
+}

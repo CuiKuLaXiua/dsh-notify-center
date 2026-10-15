@@ -1,0 +1,5 @@
+{
+  "name": "Notification Center",
+  "description": "In-app top-right notifications, native desktop toast at bottom-right, sounds, and taskbar flashing for DeepSeek Harness.",
+  "settings.nav": "Notifications"
+}

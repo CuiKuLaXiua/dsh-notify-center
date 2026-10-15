@@ -1,0 +1,73 @@
+{
+  "name": "dsh-notify-center",
+  "version": "0.1.0",
+  "description": "通知中心：页面右上角站内通知 + 桌面右下角原生提醒 + 提示音 + 任务栏闪烁（DeepSeek Harness 桌面端）",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "icon": "./icon.svg",
+  "author": "dsh-notify-center contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CuiKuLaXiua/dsh-notify-center.git"
+  },
+  "homepage": "https://github.com/CuiKuLaXiua/dsh-notify-center#readme",
+  "bugs": {
+    "url": "https://github.com/CuiKuLaXiua/dsh-notify-center/issues"
+  },
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "slots"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "smoke": "node smoke.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "locale",
+    "README.md",
+    "icon.svg"
+  ],
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "notification",
+    "notify",
+    "notify-center",
+    "toast",
+    "taskbar",
+    "flash",
+    "sound"
+  ]
+}

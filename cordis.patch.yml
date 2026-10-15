@@ -1,0 +1,4 @@
+# dsh-notify-center bundle patch
+- insert:
+    - id: dsh-notify-center
+      name: 'dsh-notify-center'
