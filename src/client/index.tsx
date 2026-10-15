@@ -142,28 +142,35 @@ export function apply(ctx: any): void {
   }
 
   try {
-    ctx.remote?.$on?.("approval/request", (request: any, next: () => void) => {
+    ctx.remote?.$on?.("approval/request", (request: any, next: () => unknown) => {
       try {
         const sessionId = request?.agent?.id || request?.sessionId || request?.agentId || "";
         if (sessionId) addBlockingCard("approval", sessionId, request);
       } catch {
         /* 忽略畸形载荷 */
       }
-      if (typeof next === "function") next();
+      // waterfall 观察者必须把 next() 的「返回值」透传出去。只调用而不 return，
+      // 整条瀑布流会以 undefined 结算，下游真正的应答器（审批卡片）收不到请求，
+      // 而 Host 侧把 undefined 当成「成功的空结果」——审批界面就此静默失效。
+      if (typeof next === "function") return next();
+      return undefined;
     });
   } catch {
     /* remote 未就绪 */
   }
 
   try {
-    ctx.remote?.$on?.("user-questions/request", (request: any, next: () => void) => {
+    ctx.remote?.$on?.("user-questions/request", (request: any, next: () => unknown) => {
       try {
         const sessionId = request?.agent?.id || request?.sessionId || request?.agentId || "";
         if (sessionId) addBlockingCard("question", sessionId, request);
       } catch {
         /* 忽略畸形载荷 */
       }
-      if (typeof next === "function") next();
+      // 同上：必须 return next()，否则 ask_user_question 的应答通道被劫持，
+      // tool-ask-user 会读到 undefined.answers 并抛出 TypeError。
+      if (typeof next === "function") return next();
+      return undefined;
     });
   } catch {
     /* remote 未就绪 */
