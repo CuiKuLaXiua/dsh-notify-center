@@ -2,8 +2,8 @@
 //
 // - showDesktopToast：System.Windows.Forms.NotifyIcon 气球提示，出现在桌面右下角
 //   （任务栏托盘上方），无需 AUMID / 打包标识，Windows 10/11 开箱即用；
-// - flashTaskbar：FlashWindowEx 闪烁宿主主窗口（dsh 桌面端运行在本进程，process.pid
-//   即拥有主窗口的 Electron 主进程 PID）。
+// - flashTaskbar：FlashWindowEx 闪烁桌面端主窗口。注意桌面端宿主运行在 web 服务
+//   进程（通常没有主窗口），所以脚本会按进程名回退到拥有主窗口的 Electron 主进程。
 //
 // 安全：子进程环境变量仅保留白名单字段，剔除 KEY/SECRET/TOKEN/PASSWORD 等敏感值；
 // 通知内容经环境变量传递，避免 PowerShell 命令注入。
@@ -67,7 +67,11 @@ export function showDesktopToast(
   run(script, { DNH_TITLE: title, DNH_BODY: body });
 }
 
-/** 任务栏闪烁（FLASHW_ALL | FLASHW_TIMERNOFG = 0x0F，闪到窗口聚焦为止）。 */
+/** 任务栏闪烁（FLASHW_ALL | FLASHW_TIMERNOFG = 0x0F，闪到窗口聚焦为止）。
+ *
+ * 桌面端宿主运行在 web 服务进程（process.pid 通常没有主窗口），因此脚本先尝试
+ * 当前进程，若 MainWindowHandle 为 0，则按进程名回退到第一个有主窗口的实例。
+ */
 export function flashTaskbar(): void {
   const script = [
     'Add-Type -TypeDefinition @"',
@@ -86,10 +90,14 @@ export function flashTaskbar(): void {
     "  public static extern bool FlashWindowEx(ref FLASHWINFO pwfi);",
     "}",
     '"@',
+    // 先尝试当前进程；若没有主窗口，回退到同名进程中第一个有主窗口的实例
     "$proc = Get-Process -Id $env:DNH_PID -ErrorAction SilentlyContinue",
-    "if ($null -eq $proc) { exit }",
+    "if ($null -eq $proc -or $proc.MainWindowHandle -eq 0) {",
+    "  $proc = Get-Process -Name $env:DNH_PROC_NAME -ErrorAction SilentlyContinue |",
+    "    Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1",
+    "}",
+    "if ($null -eq $proc -or $proc.MainWindowHandle -eq 0) { exit }",
     "$hwnd = $proc.MainWindowHandle",
-    "if ($hwnd -eq 0) { exit }",
     "$w = New-Object 'DshFlashUtil+FLASHWINFO'",
     "$w.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf($w)",
     "$w.hwnd = $hwnd",
@@ -98,5 +106,5 @@ export function flashTaskbar(): void {
     "$w.dwTimeout = 0",
     "[DshFlashUtil]::FlashWindowEx([ref]$w) | Out-Null",
   ].join("\n");
-  run(script, { DNH_PID: String(process.pid) });
+  run(script, { DNH_PID: String(process.pid), DNH_PROC_NAME: "DeepSeek Harness" });
 }

@@ -1,4 +1,8 @@
 // 站内通知 store：模块级状态 + 订阅（React useSyncExternalStore 消费）。
+//
+// ⚠ 重要：所有变更必须**替换数组引用**（不可变更新）。useSyncExternalStore 通过
+// Object.is(getSnapshot()) 比较快照，原地 push/splice 后引用不变，React 不会重渲染，
+// 导致通知卡片不出现（历史 bug：addItem 曾用 items.push 原地修改）。
 
 export interface NotificationItem {
   id: string;
@@ -61,7 +65,7 @@ function emit(): void {
   for (const fn of listeners) fn();
 }
 
-/** 新增 / 合并通知。 */
+/** 新增 / 合并通知（不可变更新，总是替换 items 引用）。 */
 export function addItem(payload: any): void {
   const kind = payload.kind || "reply";
   const blocking = isBlockingKind(kind);
@@ -70,19 +74,30 @@ export function addItem(payload: any): void {
 
   const title = payload.title || defaultTitle(kind);
   const summary = payload.summary || title;
+  const sessionTitle = payload.sessionTitle || "";
+
+  const next = items.slice();
 
   if (blocking) {
-    const existing = items.find((n) => n.sessionId === payload.sessionId && n.kind === kind);
-    if (existing) {
-      existing.count += 1;
-      existing.summary = summary || existing.summary;
-      existing.title = title || existing.title;
+    const idx = next.findIndex(
+      (n) => n.sessionId === payload.sessionId && n.kind === kind,
+    );
+    if (idx >= 0) {
+      const existing = next[idx];
+      next[idx] = {
+        ...existing,
+        count: existing.count + 1,
+        title: title || existing.title,
+        summary: summary || existing.summary,
+        sessionTitle: sessionTitle || existing.sessionTitle,
+      };
+      items = next;
       emit();
       return;
     }
   }
 
-  items.push({
+  next.push({
     id,
     sessionId: payload.sessionId || "",
     kind,
@@ -91,8 +106,9 @@ export function addItem(payload: any): void {
     count: payload.count || 1,
     firstAt: payload.firstAt || Date.now(),
     blocking,
-    sessionTitle: payload.sessionTitle || "",
+    sessionTitle,
   });
+  items = next;
   prune();
   emit();
 }

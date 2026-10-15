@@ -16,7 +16,6 @@ import { addItem, clearAll, isBlockingKind, removeBySession } from "./store";
 import { getSettings, isDndActive } from "./settings";
 import { playSound } from "./sound";
 import {
-  getActiveSessionId,
   getSessionTitle,
   initSessionServices,
 } from "./session";
@@ -32,7 +31,7 @@ export function apply(ctx: any): void {
   ensureNotifyStyles();
   initSessionServices(ctx);
 
-  // ── 推送 → UI 的三态路由 ──
+  // ── 推送 → UI 的路由 ──
   function handlePush(payload: any): void {
     if (!payload || !payload.sessionId) return;
     const s = getSettings();
@@ -40,13 +39,9 @@ export function apply(ctx: any): void {
 
     const kind = payload.kind || "reply";
     const blocking = isBlockingKind(kind);
-    const activeId = getActiveSessionId();
     const focused = typeof document !== "undefined" && document.hasFocus() && !document.hidden;
-    const sameSession = !!activeId && payload.sessionId === activeId;
 
-    // 前台同会话 + 非阻塞：消息就在眼前，不打扰；阻塞仍提醒
-    if (focused && sameSession && !blocking && !payload.force) return;
-
+    // 无论是否在前台同会话，都及时弹卡（用户可随时点「忽略」关闭）。
     const title =
       payload.title ||
       (blocking

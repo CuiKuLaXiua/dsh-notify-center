@@ -221,6 +221,17 @@ export function apply(ctx: CtxLike): void {
     }
   });
 
+  // 兜底：部分宿主版本只发 agent/error（api-session/error 是转发层事件）。
+  ctx.on("agent/error", (payload: any) => {
+    try {
+      const sessionId = payload?.agent?.id || payload?.agent?.sessionId || payload?.sessionId || "";
+      const message = payload?.error?.message || String(payload?.error ?? "agent 执行出错");
+      notify(String(sessionId), "error", "出错", String(message).slice(0, MAX_SUMMARY_CHARS));
+    } catch {
+      /* 忽略 */
+    }
+  });
+
   // ── HTTP 路由 ──
   webServer.register({
     kind: "prefix",
@@ -243,7 +254,7 @@ export function apply(ctx: CtxLike): void {
         return;
       }
       if (pathname === `${API_PREFIX}/status` && req.method === "GET") {
-        sendJson(res, 200, ok({ entries: snapshotEntries() }));
+        sendJson(res, 200, ok({ entries: snapshotEntries(), sseClients: sseClients.size }));
         return;
       }
       if (req.method !== "POST") {
