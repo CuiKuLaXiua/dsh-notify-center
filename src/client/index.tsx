@@ -2,8 +2,8 @@
 //
 // 页面端职责：
 //   1. 连接宿主 SSE（/dsh-notify/api/events），实时接收通知推送；
-//   2. 三态路由：前台同会话不打扰 → 前台异会话出站内卡片 → 后台额外
-//      声音 + 桌面右下角原生通知 + 任务栏闪烁（经 /toast 请求宿主执行）；
+//   2. 直接订阅 ctx.remote 的 approval/request 与 user-questions/request
+//      （桌面端 UI 同款通道），保证阻塞型通知可靠到达；
 //   3. 渲染三个标准槽位：
 //      - shell.overlay                         ：右上角通知栈
 //      - conversation.session.header.utilities ：铃铛 + 未读角标 + 通知中心
@@ -25,7 +25,7 @@ import { Bell } from "./bell";
 import { SettingsSection } from "./settings-section";
 import { t } from "./locale";
 
-export const inject = ["slots"];
+export const inject = ["slots", "remote", "uiWorkspace", "sessions"];
 
 export function apply(ctx: any): void {
   ensureNotifyStyles();
@@ -84,6 +84,73 @@ export function apply(ctx: any): void {
         requestDesktopToast(display, summary || title, kind, s.taskbarFlash);
       }
     }
+  }
+
+  // 阻塞型事件：桌面端 UI 正是通过 remote.$on 接收这些 waterfall（Scoped<Agent>，
+  // 根宿主插件不一定能收到）。这里作为可靠通道直接建卡；仅观察，立即 next() 放行。
+  function addBlockingCard(kind: string, sessionId: string, request: any): void {
+    const s = getSettings();
+    if (!s.enabled) return;
+    const title = kind === "approval" ? t("settings.approvalRow") : t("settings.questionRow");
+    let summary = "";
+    if (kind === "question") {
+      summary = String(request?.questions?.[0]?.question || "agent 正在等待你的回答");
+    } else {
+      summary = String(request?.reason || `工具调用需要审批：${request?.toolName || "工具"}`);
+    }
+    const sessionTitle = getSessionTitle(sessionId);
+    addItem({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${kind}`,
+      sessionId,
+      kind,
+      title,
+      summary,
+      count: 1,
+      firstAt: Date.now(),
+      blocking: true,
+      sessionTitle,
+    });
+
+    const focused = typeof document !== "undefined" && document.hasFocus() && !document.hidden;
+    if (!focused) {
+      const dnd = isDndActive();
+      const kindSound = kind === "approval" ? s.approvalSound : s.questionSound;
+      if (s.soundEnabled && kindSound && !dnd) {
+        playSound("attention", s.scheme, s.volume);
+      }
+      if (!dnd && (s.desktopToast || s.taskbarFlash)) {
+        const display = sessionTitle ? `${title} · ${sessionTitle}` : title;
+        requestDesktopToast(display, summary || title, kind, s.taskbarFlash);
+      }
+    }
+  }
+
+  try {
+    ctx.remote?.$on?.("approval/request", (request: any, next: () => void) => {
+      try {
+        const sessionId = request?.agent?.id || request?.sessionId || request?.agentId || "";
+        if (sessionId) addBlockingCard("approval", sessionId, request);
+      } catch {
+        /* 忽略畸形载荷 */
+      }
+      if (typeof next === "function") next();
+    });
+  } catch {
+    /* remote 未就绪 */
+  }
+
+  try {
+    ctx.remote?.$on?.("user-questions/request", (request: any, next: () => void) => {
+      try {
+        const sessionId = request?.agent?.id || request?.sessionId || request?.agentId || "";
+        if (sessionId) addBlockingCard("question", sessionId, request);
+      } catch {
+        /* 忽略畸形载荷 */
+      }
+      if (typeof next === "function") next();
+    });
+  } catch {
+    /* remote 未就绪 */
   }
 
   // ── SSE 长连接（宿主 /dsh-notify/api/events）──

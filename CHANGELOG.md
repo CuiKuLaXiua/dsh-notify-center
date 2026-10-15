@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2 (2026-10)
+
+- 修复：点击通知卡片跳转会话（把 `uiWorkspace`/`sessions` 加入客户端 inject，直接调用 `ctx.uiWorkspace.openSession`）。
+- 修复：阻塞型通知（提问/审批）在桌面端不出现。根宿主插件收不到 `Scoped<Agent>` 的 waterfall，
+  改为在客户端直接订阅 `ctx.remote.$on('approval/request')` / `ctx.remote.$on('user-questions/request')`
+  （与桌面端 UI 同通道），只观察并立即 `next()` 放行。
+
 ## 0.1.1 (2026-10)
 
 - 修复：站内通知卡片不显示（store 原地修改数组导致 useSyncExternalStore 不重渲染）。

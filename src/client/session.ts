@@ -1,4 +1,4 @@
-// 会话 store 访问（可选服务，未就绪时优雅降级）。
+// 会话 store 访问（inject 提供 sessions/uiWorkspace，未就绪时优雅降级）。
 // sessions.list 是快照 store：byId[id].displayTitle 为展示名；
 // retainedBy.mainView > 0 的行即当前活动会话（DSH 0.2 起的推导方式）。
 
@@ -7,12 +7,12 @@ let uiWorkspace: any = undefined;
 
 export function initSessionServices(ctx: any): void {
   try {
-    sessionsStore = ctx.get("sessions");
+    sessionsStore = ctx.sessions ?? ctx.get("sessions");
   } catch {
     /* sessions 未就绪 */
   }
   try {
-    uiWorkspace = ctx.get("uiWorkspace");
+    uiWorkspace = ctx.uiWorkspace ?? ctx.get("uiWorkspace");
   } catch {
     /* uiWorkspace 未就绪 */
   }
